@@ -1,0 +1,112 @@
+To get started, type these two commands in a new terminal:
+source activate qiime2-2017.10
+source tab-qiime
+
+#Set directory to your current working folder
+cd /Users/lukasbeule/Documents/work/Qiime2/NFREC/16S
+
+#generate a reference at 97 % genetic identity
+#16S reference
+ 
+#import the .fasta file (the sequences)
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path 1_reference/97_otus_16S.fasta \
+  --output-path 1_reference/97_16S.qza
+ 
+#import reference Taxonomy (.txt file)
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --source-format HeaderlessTSVTaxonomyFormat \
+  --input-path 1_reference/97_consensus_taxonomy_all_levels.txt \
+  --output-path 1_reference/97_ref-taxonomy.qza
+
+####################
+
+#import data into Qiime2
+#Import forward reads
+
+qiime tools import \
+--type 'SampleData[SequencesWithQuality]' \
+--input-path 2_trimmed_reads \
+--source-format CasavaOneEightSingleLanePerSampleDirFmt \
+--output-path 4_imported_files/demux-single-end.qza
+
+#Quality Control (Note 2)
+#the number with the red background defines the minimum sequence length (I choose 200)
+#chimeric reads are also removed using the ‘pooled’ method
+ 
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs 4_imported_files/demux-single-end.qza \
+--p-trunc-len 200 \
+--p-chimera-method pooled \
+--o-table 5_dada2_output/table_dada2.qza \
+--o-representative-sequences 5_dada2_output/rep-seqs-dada2.qza
+
+#create a feature table summarize
+qiime feature-table summarize \
+--i-table 5_dada2_output/table_dada2.qza \
+--m-sample-metadata-file metadata_16S.txt \
+--o-visualization 6_feature_table/table_summarize.qzv
+ 
+#tabulate sequences
+qiime feature-table tabulate-seqs \
+  --i-data 5_dada2_output/rep-seqs-dada2.qza \
+  --o-visualization 6_feature_table/rep-seqs-dada2.qzv
+ 
+#view table_summarize
+qiime tools view 6_feature_table/table_summarize.qzv
+ 
+#view rep-seqs-dada2
+qiime tools view 6_feature_table/rep-seqs-dada2.qzv
+
+#################
+
+#97% genetic identity de novo Vsearch
+qiime vsearch cluster-features-de-novo \
+--i-sequences 5_dada2_output/rep-seqs-dada2.qza \
+--i-table 5_dada2_output/table_dada2.qza \
+--p-perc-identity 0.97 \
+--o-clustered-table 7_OTU_clustering/97_OTU_table.qza \
+--o-clustered-sequences 7_OTU_clustering/97_OTU_seq.qza
+
+#visualization of de novo Vsearch
+qiime feature-table summarize \
+--i-table 7_OTU_clustering/97_OTU_table.qza \
+--m-sample-metadata-file metadata_16S.txt \
+--o-visualization 8_Vsearch/97_Vsearch_visual.qzv
+
+#view de novo table_summarize
+qiime tools view 8_Vsearch/97_Vsearch_visual.qzv
+
+##################
+
+#97% Taxonomic assignment using Blast+
+qiime feature-classifier classify-consensus-blast \
+--i-query 7_OTU_clustering/97_OTU_seq.qza \
+--i-reference-reads 1_reference/97_16S.qza \
+--i-reference-taxonomy 1_reference/97_ref-taxonomy.qza \
+--p-maxaccepts 1 \
+--p-perc-identity 0.97 \
+--p-min-consensus 0.97 \
+--o-classification 9_classified/97_taxonomy_blast.qza
+
+#visualization of the taxonomic assignment
+qiime metadata tabulate \
+  --m-input-file 9_classified/97_taxonomy_blast.qza \
+  --o-visualization 9_classified/97_taxonomy_blast.qzv
+
+#view taxonomic assignment
+qiime tools view 9_classified/97_taxonomy_blast.qzv
+
+###Obtaining the OTU table###
+
+#Barplot
+qiime taxa barplot \
+  --i-table 7_OTU_clustering/97_OTU_table.qza \
+  --i-taxonomy 9_classified/97_taxonomy_blast.qza \
+  --m-metadata-file metadata_16S.txt \
+  --o-visualization 10_barplot/97_barplot_blast.qzv
+
+#view barplot to export raw OTU table
+qiime tools view 10_barplot/97_barplot_blast.qzv
