@@ -1,0 +1,19 @@
+## Assuming the primers were trimmed by cutadapt, and quality and adaptors were checked/trimmed again by Trimmomatic prior to this step##
+# https://github.com/ZeweiSong/FAST/wiki/Fungal-ITS1-Pipeline-Using-Read1-Sequences
+
+/./Users/kc178/bin/bin/FAST-master/fast.py -generate_mapping -i /Volumes/FEDORA-WS-L/cut_R1_0.4/trimmo/trimmo_default -o cut04_triD_map.txt
+
+
+/./Users/kc178/bin/bin/FAST-master/fast.py -add_labels -m cut04_triD_map.txt -i /Volumes/FEDORA-WS-L/cut_R1_0.4/trimmo/trimmo_default -o cut04_triD_labeled
+
+
+for f in `find . -name "*R1*fastq.gz"`; do mv "$f" $(echo "$f" | sed 's/\.gz//g'); done
+
+
+/./Users/kc178/bin/bin/FAST-master/fast.py -merge_seqs -i cut04_triD_labeled -o cut04_triD_labeled.fastq
+
+
+/./Users/kc178/bin/bin/FAST-master/fast.py -stat_seqs -i cut04_triD_labeled.fastq -o cut04_triD_labeled_report.txt
+
+
+/./Users/kc178/bin/bin/FAST-master/fast.py -truncate_seqs -i cut04_triD_labeled.fastq -fixed_length 150 -o cut04_triD_labeled_L150.fasta
